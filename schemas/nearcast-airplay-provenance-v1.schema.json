@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Mostorm-Labs/axbuild/schemas/nearcast-airplay-provenance-v1.schema.json",
+  "title": "AxBuild NearCast AirPlay Provenance v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "family",
+    "packageContract",
+    "target",
+    "variant",
+    "artifact",
+    "release",
+    "source",
+    "buildInputs",
+    "components",
+    "redistribution"
+  ],
+  "properties": {
+    "format": {"const": "axbuild-nearcast-airplay-provenance-v1"},
+    "family": {"const": "nearcast-airplay"},
+    "packageContract": {"const": "nearcast-airplay-seed-v1"},
+    "target": {"const": "windows-x64"},
+    "variant": {"const": "release"},
+    "artifact": {"$ref": "artifact-manifest-v1.schema.json#/$defs/artifact"},
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "releaseTag", "releaseSetId", "indexAsset", "indexSha256"],
+      "properties": {
+        "repository": {"type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"},
+        "releaseTag": {"type": "string", "minLength": 1},
+        "releaseSetId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+        "indexAsset": {"type": "string", "minLength": 1, "pattern": "^[^/\\\\\\u0000]+$"},
+        "indexSha256": {"type": "string", "pattern": "^[0-9A-Fa-f]{64}$"}
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["files"],
+      "properties": {
+        "files": {"type": "array", "items": {"$ref": "#/$defs/file"}}
+      }
+    },
+    "buildInputs": {"type": "object"},
+    "components": {"type": "array", "items": {"type": "object"}},
+    "redistribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "notes"],
+      "properties": {
+        "status": {"enum": ["review-required", "qualified"]},
+        "notes": {"type": "string"}
+      }
+    }
+  },
+  "$defs": {
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "size", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1, "pattern": "^[^\\\\\\u0000]+$"},
+        "size": {"type": "integer", "minimum": 0},
+        "sha256": {"type": "string", "pattern": "^[0-9A-Fa-f]{64}$"}
+      }
+    }
+  }
+}
