@@ -146,6 +146,30 @@ For private GitHub repositories, transport can use `GH_TOKEN` or `GITHUB_TOKEN`.
 
 These examples prove dependency shapes, not project migrations.
 
+## NearCast AirPlay seed tooling
+
+The P31 package tooling creates a local, unpublished candidate from an already
+materialized Windows AirPlay closure:
+
+```bash
+axbuild build-nearcast-airplay-seed path/to/airplay-closure path/to/seed-output
+```
+
+The output contains the required archive, release index, provenance metadata,
+and SDK lock. The output directory is also a file mirror under the generated
+release tag, so `NearCastAirPlayProvider` can qualify it through the ordinary
+resolver without network access. Artifact identity is derived from the
+closure file inventory, target/variant, ABI/toolchain inputs, and the package
+contract; it is not derived from a consumer repository commit.
+
+This command stages a candidate only. It does not publish a GitHub release,
+promote a consumer lock, or migrate NearCast. Redistribution status remains
+`review-required` until the component and vendor terms are separately cleared.
+
+The machine-readable contracts are documented in
+`schemas/nearcast-airplay-seed-v1.schema.json` and
+`schemas/nearcast-airplay-provenance-v1.schema.json`.
+
 ## Planned project integrations
 
 Future project work can adopt AxBuild incrementally:
