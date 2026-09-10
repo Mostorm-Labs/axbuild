@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Mostorm-Labs/axbuild/schemas/release-index-v1.schema.json",
+  "title": "AxBuild Release Index v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "family", "releaseSetId", "artifacts"],
+  "properties": {
+    "format": {"const": "axbuild-release-index-v1"},
+    "family": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+    "releaseSetId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "artifact-manifest-v1.schema.json#/$defs/artifact"}
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Mostorm-Labs/axbuild/schemas/artifact-manifest-v1.schema.json",
+  "title": "AxBuild Artifact Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "artifact"],
+  "properties": {
+    "format": {"const": "axbuild-artifact-manifest-v1"},
+    "artifact": {"$ref": "#/$defs/artifact"}
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "key", "identity", "asset", "sha256"],
+      "properties": {
+        "kind": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+        "key": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+        "identity": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+        "asset": {"type": "string", "minLength": 1, "pattern": "^[^/\\\\\\u0000]+$"},
+        "sha256": {"type": "string", "pattern": "^[0-9A-Fa-f]{64}$"},
+        "size": {"type": "integer", "minimum": 0},
+        "metadata": {"type": "object"}
+      }
+    }
+  }
+}
