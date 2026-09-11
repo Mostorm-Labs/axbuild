@@ -6,7 +6,7 @@ import zipfile
 
 import pytest
 
-from axbuild.archive import file_sha256, verify_sha256
+from axbuild.archive import extract_zip_safe, file_sha256, verify_sha256
 from axbuild.errors import ContractError, IntegrityError
 from axbuild.qualification import (
     qualify_nearcast_airplay_artifact,
@@ -123,6 +123,18 @@ def test_duplicate_archive_entries_fail_closed(tmp_path):
         archive.writestr("gstreamer/lib/pkgconfig/gstreamer-1.0.pc", "two")
     with pytest.raises(IntegrityError, match="duplicate"):
         qualify_nearcast_airplay_artifact(source, tmp_path / "bad")
+
+
+def test_extract_zip_accepts_windows_directory_entries(tmp_path):
+    source = tmp_path / "windows-paths.zip"
+    with zipfile.ZipFile(source, "w") as archive:
+        archive.writestr("dnssd\\Lib\\", "")
+        archive.writestr("dnssd\\Lib\\x64\\dnssd.lib", "library")
+
+    destination = tmp_path / "extracted"
+    extract_zip_safe(source, destination)
+
+    assert (destination / "dnssd/Lib/x64/dnssd.lib").read_text(encoding="utf-8") == "library"
 
 
 def test_manifest_rejects_unknown_fields(tmp_path):
