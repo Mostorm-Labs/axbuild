@@ -25,6 +25,15 @@ FILES = {
     "vcpkg/installed/x64-windows/.axbuild-present": "vcpkg",
 }
 
+REAL_LAYOUT_FILES = {
+    "gstreamer/1.0/msvc_x86_64/lib/pkgconfig/gstreamer-1.0.pc": "gstreamer",
+    "gstreamer/1.0/msvc_x86_64/bin/gst-inspect-1.0.exe": "inspect",
+    "dnssd/Include/dns_sd.h": "dns",
+    "bonjour/Bonjour64.msi": "bonjour",
+    "webview2/build/native/include/WebView2.h": "webview",
+    "vcpkg/installed/x64-windows/bin/libcrypto-3-x64.dll": "vcpkg",
+}
+
 
 def write_archive(path: Path, *, reverse: bool = False) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -36,6 +45,14 @@ def write_archive(path: Path, *, reverse: bool = False) -> None:
             info = zipfile.ZipInfo(name)
             info.date_time = (2025, 1, 1, 0, 0, 0) if reverse else (2024, 1, 1, 0, 0, 0)
             archive.writestr(info, content)
+
+
+def write_real_layout_archive(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("dnssd\\Lib\\", "")
+        for name, content in REAL_LAYOUT_FILES.items():
+            archive.writestr(name.replace("/", "\\"), content)
 
 
 def test_qualification_writes_manifest_provenance_and_report(tmp_path):
@@ -59,6 +76,15 @@ def test_qualification_writes_manifest_provenance_and_report(tmp_path):
     assert provenance["redistribution"]["status"] == "review-required"
     assert report["artifactIdentity"] == manifest["artifactIdentity"]
     assert all(item["status"] == "pass" for item in report["validationResults"].values())
+
+
+def test_qualification_accepts_real_nearcast_layout(tmp_path):
+    source = tmp_path / "real-layout.zip"
+    write_real_layout_archive(source)
+
+    result = qualify_nearcast_airplay_artifact(source, tmp_path / "candidate")
+
+    assert result.artifact_identity.startswith("nearcast-airplay-runtime-windows-x64-release-")
 
 
 def test_identity_is_stable_for_same_archive_inventory(tmp_path):

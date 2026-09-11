@@ -29,13 +29,22 @@ PROVENANCE_NAME = "nearcast-airplay-provenance.json"
 REPORT_NAME = "qualification-report.json"
 
 REQUIRED_CLOSURE_PATHS = (
-    "gstreamer/lib/pkgconfig/gstreamer-1.0.pc",
-    "gstreamer/bin/gst-inspect-1.0.exe",
     "dnssd/Include/dns_sd.h",
     "bonjour/Bonjour64.msi",
     "webview2/build/native/include/WebView2.h",
-    "vcpkg/installed/x64-windows/.axbuild-present",
 )
+GSTREAMER_LAYOUTS = (
+    (
+        "gstreamer/lib/pkgconfig/gstreamer-1.0.pc",
+        "gstreamer/bin/gst-inspect-1.0.exe",
+    ),
+    (
+        "gstreamer/1.0/msvc_x86_64/lib/pkgconfig/gstreamer-1.0.pc",
+        "gstreamer/1.0/msvc_x86_64/bin/gst-inspect-1.0.exe",
+    ),
+)
+VCPKG_ROOT_PREFIX = "vcpkg/installed/x64-windows/"
+VCPKG_SENTINEL = VCPKG_ROOT_PREFIX + ".axbuild-present"
 
 
 @dataclass(frozen=True)
@@ -73,6 +82,10 @@ def _inventory(root: Path) -> list[dict[str, Any]]:
 def _validate_required_layout(entries: list[dict[str, Any]]) -> None:
     present = {item["path"] for item in entries}
     missing = [path for path in REQUIRED_CLOSURE_PATHS if path not in present]
+    if not any(set(layout).issubset(present) for layout in GSTREAMER_LAYOUTS):
+        missing.extend(GSTREAMER_LAYOUTS[0])
+    if VCPKG_SENTINEL not in present and not any(path.startswith(VCPKG_ROOT_PREFIX) for path in present):
+        missing.append(VCPKG_SENTINEL)
     if missing:
         raise IntegrityError("NearCast AirPlay closure missing required path(s): " + ", ".join(missing))
 
