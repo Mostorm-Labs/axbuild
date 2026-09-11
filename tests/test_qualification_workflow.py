@@ -2,7 +2,7 @@ from pathlib import Path
 
 
 WORKFLOW = Path(".github/workflows/nearcast-airplay-qualification.yml")
-TOOLING_REVISION = "7134fb08dbb4a4edd12f9c3005759a84e6b89fde"
+TOOLING_REVISION = "7f9f7cf0d5211fc7b2ebb7ffd271041aeccf0c0a"
 SOURCE_SHA = "0768c47f3df888bddbca7531299f11776188d2ee029332294a1af08bb2f1575c"
 
 
