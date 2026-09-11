@@ -59,15 +59,16 @@ def _safe_member_path(name: str, destination: Path) -> Path:
 def extract_zip_safe(archive: Path, destination: Path) -> None:
     destination.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(archive, "r") as zf:
-        planned: list[tuple[zipfile.ZipInfo, Path]] = []
+        planned: list[tuple[zipfile.ZipInfo, Path, bool]] = []
         for info in zf.infolist():
             if _zip_entry_is_symlink(info):
                 raise IntegrityError(f"archive contains symlink entry: {info.filename}")
-            target = _safe_member_path(info.filename.rstrip("/"), destination)
-            planned.append((info, target))
+            normalized_name = info.filename.replace("\\", "/")
+            target = _safe_member_path(normalized_name.rstrip("/"), destination)
+            planned.append((info, target, info.is_dir() or normalized_name.endswith("/")))
 
-        for info, target in planned:
-            if info.is_dir() or info.filename.endswith("/"):
+        for info, target, is_dir in planned:
+            if is_dir:
                 target.mkdir(parents=True, exist_ok=True)
                 continue
             target.parent.mkdir(parents=True, exist_ok=True)
