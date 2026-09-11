@@ -10,6 +10,7 @@ def test_real_qualification_workflow_pins_all_external_inputs():
     workflow = WORKFLOW.read_text(encoding="utf-8")
     assert TOOLING_REVISION in workflow
     assert "Mostorm-Labs/NearCast" in workflow
+    assert "NEARCAST_READ_TOKEN" in workflow
     assert SOURCE_SHA in workflow
     assert "qualify-nearcast-airplay-artifact" in workflow
     assert "actions/upload-artifact@v4" in workflow
