@@ -13,6 +13,25 @@ AxBuild is intentionally informed by two different existing patterns:
 
 The examples in this repository are synthetic. AxBuild does not contain or redistribute Skia, GStreamer, AirPlay, UxPlay, Bonjour, WebView2, or other third-party binaries.
 
+## NearCast AirPlay artifact qualification
+
+An explicit local NearCast AirPlay closure archive can be qualified into a
+release-ready candidate without publishing it:
+
+```bash
+axbuild qualify-nearcast-airplay-artifact path/to/closure.zip path/to/candidate
+```
+
+The command emits the deterministic runtime archive, artifact manifest,
+provenance metadata, and qualification report. Identity is based on the
+canonical archive file inventory, target/variant, package contract, and
+ABI/toolchain inputs. Provenance always records `redistribution.status` as
+`review-required`; this tooling does not create a GitHub Release, release tag,
+consumer lock, or redistribution approval.
+
+The executable contract is implemented by `axbuild.qualification` and the
+machine-readable manifest/report contracts are under `schemas/`.
+
 ## Core model
 
 ```text

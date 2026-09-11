@@ -8,6 +8,7 @@ import sys
 
 from .contracts import load_release_index, load_sdk_lock
 from .errors import AxBuildError
+from .qualification import qualify_nearcast_airplay_artifact
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -19,6 +20,16 @@ def _build_parser() -> argparse.ArgumentParser:
 
     validate_index = subparsers.add_parser("validate-index", help="Validate an AxBuild release index")
     validate_index.add_argument("path", type=Path)
+
+    qualify = subparsers.add_parser(
+        "qualify-nearcast-airplay-artifact",
+        help="Qualify a local NearCast AirPlay closure archive",
+    )
+    qualify.add_argument("source_archive", type=Path)
+    qualify.add_argument("output_dir", type=Path)
+    qualify.add_argument("--build-inputs", type=Path)
+    qualify.add_argument("--components", type=Path)
+    qualify.add_argument("--notices", type=Path)
     return parser
 
 
@@ -45,6 +56,46 @@ def _handle_validate_index(path: Path) -> dict[str, object]:
     }
 
 
+def _read_optional_json(path: Path | None) -> object | None:
+    if path is None:
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise AxBuildError(f"invalid JSON input: {path}: {exc}") from exc
+
+
+def _handle_qualify(args: argparse.Namespace) -> dict[str, object]:
+    build_inputs = _read_optional_json(args.build_inputs)
+    components = _read_optional_json(args.components)
+    if build_inputs is not None and not isinstance(build_inputs, dict):
+        raise AxBuildError("--build-inputs must contain a JSON object")
+    if components is not None and not isinstance(components, list):
+        raise AxBuildError("--components must contain a JSON array")
+    notices = None
+    if args.notices is not None:
+        try:
+            notices = args.notices.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            raise AxBuildError(f"cannot read notices file: {args.notices}: {exc}") from exc
+    result = qualify_nearcast_airplay_artifact(
+        args.source_archive,
+        args.output_dir,
+        build_inputs=build_inputs,
+        components=components,
+        notices=notices,
+    )
+    return {
+        "format": "axbuild-nearcast-airplay-qualification-v1",
+        "artifactIdentity": result.artifact_identity,
+        "archiveSha256": result.archive_sha256,
+        "archive": str(result.archive_path),
+        "manifest": str(result.manifest_path),
+        "provenance": str(result.provenance_path),
+        "report": str(result.report_path),
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
@@ -53,6 +104,8 @@ def main(argv: list[str] | None = None) -> int:
             payload = _handle_validate_lock(args.path)
         elif args.command == "validate-index":
             payload = _handle_validate_index(args.path)
+        elif args.command == "qualify-nearcast-airplay-artifact":
+            payload = _handle_qualify(args)
         else:  # argparse keeps this unreachable, but preserve fail-closed behavior.
             parser.error(f"unsupported command: {args.command}")
             return 2
