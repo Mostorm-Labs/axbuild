@@ -15,6 +15,7 @@ from axbuild.provider import ProviderRegistry
 from axbuild.publication import (
     prepare_nearcast_airplay_release,
     verify_published_release,
+    verify_superseded_release,
 )
 from axbuild.qualification import qualify_nearcast_airplay_artifact
 
@@ -219,3 +220,79 @@ def test_published_release_resolves_online_then_replays_offline(tmp_path):
     assert offline.facts["networkUsed"] is False
     assert offline.facts["index"]["source"] == "store"
     assert offline.facts["artifacts"][0]["source"] == "store"
+
+
+def test_superseded_release_verification_requires_exact_nonimmutable_assets():
+    expected = {
+        "runtime.zip": {
+            "id": 11,
+            "size": 7,
+            "sha256": "a" * 64,
+        },
+        "index.json": {
+            "id": 12,
+            "size": 9,
+            "sha256": "b" * 64,
+        },
+    }
+    metadata = {
+        "id": 42,
+        "tag_name": "superseded-v1",
+        "immutable": False,
+        "assets": [
+            {
+                "id": values["id"],
+                "name": name,
+                "size": values["size"],
+                "digest": f"sha256:{values['sha256']}",
+                "state": "uploaded",
+            }
+            for name, values in expected.items()
+        ],
+    }
+
+    assert verify_superseded_release(
+        metadata,
+        release_id=42,
+        release_tag="superseded-v1",
+        expected_assets=expected,
+    ) == {name: values["sha256"] for name, values in expected.items()}
+
+
+@pytest.mark.parametrize("mutation", ["wrong-id", "immutable", "changed-digest"])
+def test_superseded_release_verification_rejects_changed_history(mutation):
+    expected = {
+        "runtime.zip": {
+            "id": 11,
+            "size": 7,
+            "sha256": "a" * 64,
+        }
+    }
+    metadata = {
+        "id": 42,
+        "tag_name": "superseded-v1",
+        "immutable": False,
+        "assets": [
+            {
+                "id": 11,
+                "name": "runtime.zip",
+                "size": 7,
+                "digest": f"sha256:{'a' * 64}",
+                "state": "uploaded",
+            }
+        ],
+    }
+    if mutation == "wrong-id":
+        metadata["id"] = 43
+    elif mutation == "immutable":
+        metadata["immutable"] = True
+    else:
+        metadata["assets"][0]["digest"] = f"sha256:{'b' * 64}"
+
+    with pytest.raises((ContractError, IntegrityError)):
+        verify_superseded_release(
+            metadata,
+            release_id=42,
+            release_tag="superseded-v1",
+            expected_assets=expected,
+        )

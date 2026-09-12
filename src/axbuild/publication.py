@@ -16,6 +16,7 @@ from .contracts import (
     validate_namespace,
     validate_release_tag,
     validate_repository,
+    validate_sha256,
 )
 from .errors import ContractError, IntegrityError
 from .qualification import (
@@ -246,4 +247,49 @@ def verify_published_release(
             raise IntegrityError(f"downloaded release asset is missing or unsafe: {name}")
         verify_sha256(downloaded, expected_digest)
         verified[name] = expected_digest
+    return verified
+
+
+def verify_superseded_release(
+    metadata: Mapping[str, Any],
+    *,
+    release_id: int,
+    release_tag: str,
+    expected_assets: Mapping[str, Mapping[str, Any]],
+) -> dict[str, str]:
+    """Prove that a preserved failed publication still has its frozen bytes."""
+    if not isinstance(metadata, Mapping):
+        raise ContractError("superseded release metadata must be an object")
+    if metadata.get("id") != release_id:
+        raise ContractError("superseded release ID differs from frozen ID")
+    if metadata.get("tag_name") != release_tag:
+        raise ContractError("superseded release tag differs from frozen tag")
+    if metadata.get("immutable") is not False:
+        raise ContractError("superseded release immutability state differs from frozen state")
+    records = metadata.get("assets")
+    if not isinstance(records, list) or any(not isinstance(item, Mapping) for item in records):
+        raise ContractError("superseded release assets must be an array of objects")
+    by_name: dict[str, Mapping[str, Any]] = {}
+    for item in records:
+        name = item.get("name")
+        if not isinstance(name, str) or name in by_name:
+            raise ContractError("superseded release assets contain an invalid or duplicate name")
+        by_name[name] = item
+    if set(by_name) != set(expected_assets):
+        raise IntegrityError("superseded release asset set differs from frozen set")
+
+    verified: dict[str, str] = {}
+    for name, expected in expected_assets.items():
+        if not isinstance(expected, Mapping):
+            raise ContractError(f"frozen superseded asset must be an object: {name}")
+        digest = validate_sha256(expected.get("sha256"))
+        record = by_name[name]
+        if (
+            record.get("id") != expected.get("id")
+            or record.get("size") != expected.get("size")
+            or record.get("state") != "uploaded"
+            or record.get("digest") != f"sha256:{digest}"
+        ):
+            raise IntegrityError(f"superseded release asset differs from frozen state: {name}")
+        verified[name] = digest
     return verified
