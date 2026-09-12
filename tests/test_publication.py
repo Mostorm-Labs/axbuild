@@ -134,6 +134,7 @@ def test_published_release_verification_accepts_only_exact_downloaded_assets(tmp
     metadata = {
         "tagName": RELEASE_TAG,
         "isDraft": False,
+        "isImmutable": True,
         "assets": [
             {
                 "name": asset.name,
@@ -149,7 +150,9 @@ def test_published_release_verification_accepts_only_exact_downloaded_assets(tmp
     assert verified == {asset.name: file_sha256(asset) for asset in bundle.assets}
 
 
-@pytest.mark.parametrize("mutation", ["wrong-tag", "extra-asset", "changed-bytes"])
+@pytest.mark.parametrize(
+    "mutation", ["wrong-tag", "mutable-release", "extra-asset", "changed-bytes"]
+)
 def test_published_release_verification_refuses_immutable_mismatch(tmp_path, mutation):
     candidate = _qualified_candidate(tmp_path)
     bundle = prepare_nearcast_airplay_release(
@@ -166,6 +169,7 @@ def test_published_release_verification_refuses_immutable_mismatch(tmp_path, mut
     metadata = {
         "tagName": RELEASE_TAG,
         "isDraft": False,
+        "isImmutable": True,
         "assets": [
             {"name": asset.name, "size": asset.stat().st_size}
             for asset in bundle.assets
@@ -173,6 +177,8 @@ def test_published_release_verification_refuses_immutable_mismatch(tmp_path, mut
     }
     if mutation == "wrong-tag":
         metadata["tagName"] = "latest"
+    elif mutation == "mutable-release":
+        metadata["isImmutable"] = False
     elif mutation == "extra-asset":
         metadata["assets"].append({"name": "unexpected.txt", "size": 1})
     else:

@@ -213,6 +213,8 @@ def verify_published_release(
         raise ContractError("published release tag differs from frozen tag")
     if metadata.get("isDraft") is not False:
         raise ContractError("published release must not be a draft")
+    if metadata.get("isImmutable") is not True:
+        raise ContractError("published release must have GitHub immutability enabled")
     if metadata.get("isPrerelease") not in {None, False}:
         raise ContractError("published release must not be a prerelease")
     records = metadata.get("assets")
