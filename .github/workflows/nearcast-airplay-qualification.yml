@@ -18,13 +18,13 @@ jobs:
       SOURCE_TAG: airplay-deps-windows-x64-20260814-162942
       SOURCE_ASSET: nearcast-airplay-deps-windows-x64-20260814-162942.zip
       SOURCE_SHA256: 0768c47f3df888bddbca7531299f11776188d2ee029332294a1af08bb2f1575c
-      TOOLING_REVISION: 7f9f7cf0d5211fc7b2ebb7ffd271041aeccf0c0a
+      TOOLING_REVISION: c121c2a380209d4472a785f1746b9aa4d853008c
     steps:
       - name: Checkout accepted qualification tooling
         uses: actions/checkout@v4
         with:
           repository: Mostorm-Labs/axbuild
-          ref: 7f9f7cf0d5211fc7b2ebb7ffd271041aeccf0c0a
+          ref: c121c2a380209d4472a785f1746b9aa4d853008c
           path: tooling
 
       - name: Set up Python
