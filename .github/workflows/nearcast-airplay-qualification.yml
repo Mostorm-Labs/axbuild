@@ -1,0 +1,105 @@
+name: AxBuild NearCast AirPlay Qualification
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/nearcast-airplay-qualification.yml"
+      - "docs/packages/AXBUILD-NEARCAST-AIRPLAY-ARTIFACT-QUALIFICATION-RUN-P31-v0.1.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qualify:
+    name: qualify / nearcast-airplay / windows-x64
+    runs-on: ubuntu-24.04
+    env:
+      SOURCE_TAG: airplay-deps-windows-x64-20260814-162942
+      SOURCE_ASSET: nearcast-airplay-deps-windows-x64-20260814-162942.zip
+      SOURCE_SHA256: 0768c47f3df888bddbca7531299f11776188d2ee029332294a1af08bb2f1575c
+      TOOLING_REVISION: c121c2a380209d4472a785f1746b9aa4d853008c
+    steps:
+      - name: Checkout accepted qualification tooling
+        uses: actions/checkout@v4
+        with:
+          repository: Mostorm-Labs/axbuild
+          ref: c121c2a380209d4472a785f1746b9aa4d853008c
+          path: tooling
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install accepted qualification tooling
+        run: python -m pip install -e ./tooling
+
+      - name: Verify NearCast read authorization
+        env:
+          GH_TOKEN: ${{ secrets.NEARCAST_READ_TOKEN }}
+        run: |
+          test -n "$GH_TOKEN" || {
+            echo "NEARCAST_READ_TOKEN repository secret is required to read private NearCast releases" >&2
+            exit 1
+          }
+          gh release view "$SOURCE_TAG" --repo Mostorm-Labs/NearCast --json tagName
+
+      - name: Download and verify real NearCast closure
+        env:
+          GH_TOKEN: ${{ secrets.NEARCAST_READ_TOKEN }}
+        run: |
+          mkdir -p input candidate
+          gh release download "$SOURCE_TAG" \
+            --repo Mostorm-Labs/NearCast \
+            --pattern "$SOURCE_ASSET" \
+            --dir input
+          test "$(sha256sum "input/$SOURCE_ASSET" | cut -d ' ' -f 1)" = "$SOURCE_SHA256"
+          python -c "import json; from pathlib import Path; p=Path('candidate/qualification-input.json'); p.write_text(json.dumps({'source_archive': {'asset': '$SOURCE_ASSET', 'source_origin': 'github:Mostorm-Labs/NearCast/releases/tag/$SOURCE_TAG', 'source_sha256': '$SOURCE_SHA256'}, 'target': 'windows-x64', 'variant': 'release', 'tooling_revision': '$TOOLING_REVISION'}, indent=2, sort_keys=True) + '\\n')"
+
+      - name: Qualify artifact candidate
+        run: |
+          python -m axbuild qualify-nearcast-airplay-artifact \
+            "input/$SOURCE_ASSET" \
+            candidate
+
+      - name: Validate qualification outputs
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import zipfile
+
+          from axbuild.archive import verify_sha256
+          from axbuild.qualification import load_artifact_manifest, load_provenance, load_qualification_report
+
+          root = Path("candidate")
+          required = [
+              "nearcast-airplay-runtime-windows-x64-release.zip",
+              "nearcast-airplay-artifact-manifest.json",
+              "nearcast-airplay-provenance.json",
+              "qualification-report.json",
+          ]
+          if any(not (root / name).is_file() for name in required):
+              raise SystemExit("qualification output is incomplete")
+          manifest = load_artifact_manifest(root / required[1])
+          provenance = load_provenance(root / required[2])
+          report = load_qualification_report(root / required[3])
+          if provenance["artifactIdentity"] != manifest["artifactIdentity"]:
+              raise SystemExit("provenance identity differs from manifest")
+          if report["artifactIdentity"] != manifest["artifactIdentity"]:
+              raise SystemExit("report identity differs from manifest")
+          with zipfile.ZipFile(root / required[0]) as archive:
+              if [item.filename for item in archive.infolist()] != [item["path"] for item in manifest["files"]]:
+                  raise SystemExit("manifest entries differ from archive")
+          verify_sha256(root / required[0], report["artifactSha256"])
+          print(manifest["artifactIdentity"])
+          print(report["artifactSha256"])
+          PY
+
+      - name: Upload reviewer-accessible qualification evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: nearcast-airplay-qualification-${{ github.sha }}
+          path: candidate/
+          if-no-files-found: error
+          retention-days: 14
